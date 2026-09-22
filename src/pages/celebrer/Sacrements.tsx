@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { SACREMENTS } from "@/data/content";
+import { apiGet } from "@/lib/api";
 
-function SacrementCard({ s, onSelect }: { s: typeof SACREMENTS[0]; onSelect: (id: string) => void }) {
+interface Sacrement {
+  id: number;
+  slug: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  img: string;
+}
+
+function SacrementCard({ s }: { s: Sacrement }) {
   return (
-    <button onClick={() => onSelect(s.id)} className="text-left bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group border border-transparent hover:border-yellow-200">
+    <Link to={`/celebrer/sacrements/${s.slug}`} className="text-left bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group border border-transparent hover:border-yellow-200 block">
       <div className="relative h-40 overflow-hidden">
         <img src={s.img} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,45,107,0.85) 0%, transparent 60%)" }} />
@@ -17,51 +27,16 @@ function SacrementCard({ s, onSelect }: { s: typeof SACREMENTS[0]; onSelect: (id
         <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.7, marginBottom: 12 }}>{s.description}</p>
         <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.76rem", color: "#0B3D91", fontWeight: 700 }}>En savoir plus →</span>
       </div>
-    </button>
-  );
-}
-
-function SacrementModal({ s, onClose }: { s: typeof SACREMENTS[0]; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="relative h-48 overflow-hidden rounded-t-2xl">
-          <img src={s.img} alt={s.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,45,107,0.9) 0%, transparent 50%)" }} />
-          <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center gap-3">
-            <span className="text-3xl">{s.icon}</span>
-            <div>
-              <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.5rem", fontWeight: 700, color: "white" }}>{s.title}</h2>
-              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", color: "#D4AF37" }}>{s.subtitle}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full w-8 h-8 flex items-center justify-center transition-all">✕</button>
-        </div>
-        <div className="p-6">
-          <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#4b5563", lineHeight: 1.8, marginBottom: 20 }}>{s.description}</p>
-          <div style={{ background: "#F5F7FA", borderRadius: 12, padding: "16px 20px" }}>
-            <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.1em", marginBottom: 12 }}>INFORMATIONS PRATIQUES</div>
-            {s.details.map((d) => (
-              <div key={d} className="flex items-start gap-2 mb-2.5">
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0B3D91", flexShrink: 0, marginTop: 6 }} />
-                <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem", color: "#4b5563", lineHeight: 1.6 }}>{d}</span>
-              </div>
-            ))}
-          </div>
-          <Link to="/contact"
-            style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.83rem" }}
-            className="block text-center text-white py-3 rounded-xl mt-5 hover:opacity-90 transition-opacity">
-            Contacter le secrétariat
-          </Link>
-        </div>
-      </div>
-    </div>
+    </Link>
   );
 }
 
 export default function Sacrements() {
-  const [selected, setSelected] = useState<string | null>(null);
-  const sacrement = SACREMENTS.find(s => s.id === selected);
+  const [sacrements, setSacrements] = useState<Sacrement[]>([]);
+
+  useEffect(() => {
+    apiGet<Sacrement[]>("/sacrements").then(setSacrements).catch(() => {});
+  }, []);
 
   return (
     <>
@@ -89,10 +64,9 @@ export default function Sacrements() {
             Les sacrements sont des signes efficaces de la grâce de Dieu. Cliquez sur un sacrement pour en savoir plus.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {SACREMENTS.map((s) => <SacrementCard key={s.id} s={s} onSelect={setSelected} />)}
+            {sacrements.map((s) => <SacrementCard key={s.id} s={s} />)}
           </div>
         </div>
-        {sacrement && <SacrementModal s={sacrement} onClose={() => setSelected(null)} />}
       </section>
     </>
   );

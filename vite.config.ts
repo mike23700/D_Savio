@@ -38,6 +38,12 @@ export default defineConfig(({ mode }) => {
           '**/.figma/**',
 ],
       },
+      proxy: {
+        '/api': {
+          target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8001',
+          changeOrigin: true,
+        },
+      },
     },
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',

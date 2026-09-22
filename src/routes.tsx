@@ -1,9 +1,32 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "@/components/Layout";
+import { RequireAdmin, RequireAuth } from "@/lib/auth";
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminDashboard from "@/pages/admin/Dashboard";
+import AdminSettings from "@/pages/admin/Settings";
+import AdminMassSchedule from "@/pages/admin/MassSchedule";
+import AdminSacrements from "@/pages/admin/Sacrements";
+import AdminCatechese from "@/pages/admin/Catechese";
+import AdminPriere from "@/pages/admin/Priere";
+import AdminIntentions from "@/pages/admin/Intentions";
+import AdminHomelies from "@/pages/admin/Homelies";
+import AdminMouvements from "@/pages/admin/Mouvements";
+import AdminProjets from "@/pages/admin/Projets";
+import AdminRegistre from "@/pages/admin/Registre";
+import AdminProduits from "@/pages/admin/Produits";
+import AdminCommandes from "@/pages/admin/Commandes";
+import AdminDonations from "@/pages/admin/Donations";
+import AdminJournalAbonnements from "@/pages/admin/JournalAbonnements";
+import AdminJournalNumeros from "@/pages/admin/JournalNumeros";
+import AdminJournalTarifs from "@/pages/admin/JournalTarifs";
 import Home from "@/pages/Home";
 import LaParoisse from "@/pages/LaParoisse";
 import VieParoissiale from "@/pages/VieParoissiale";
+import MouvementDetail from "@/pages/vie-paroissiale/MouvementDetail";
+import ProjetDetail from "@/pages/vie-paroissiale/ProjetDetail";
 import Celebrer from "@/pages/Celebrer";
+import SacrementDetail from "@/pages/celebrer/SacrementDetail";
 import SeNourrir from "@/pages/SeNourrir";
 import Actualites, { ActualiteDetail } from "@/pages/Actualites";
 import Agenda from "@/pages/Agenda";
@@ -12,6 +35,7 @@ import Mediatheque from "@/pages/Mediatheque";
 import Contact from "@/pages/Contact";
 import Don from "@/pages/Don";
 import Boutique from "@/pages/Boutique";
+import BoutiqueDetail from "@/pages/BoutiqueDetail";
 import EspaceMembre from "@/pages/EspaceMembre";
 
 // Paroisse sub-pages
@@ -78,14 +102,17 @@ export const router = createBrowserRouter([
       // Vie Paroissiale
       { path: "vie-paroissiale", Component: VieParoissiale },
       { path: "vie-paroissiale/mouvements", Component: Mouvements },
+      { path: "vie-paroissiale/mouvements/:id", Component: MouvementDetail },
       { path: "vie-paroissiale/caritas", Component: Caritas },
       { path: "vie-paroissiale/projets", Component: Projets },
+      { path: "vie-paroissiale/projets/:id", Component: ProjetDetail },
       { path: "vie-paroissiale/registre", Component: Registre },
 
       // Célébrer
       { path: "celebrer", Component: Celebrer },
       { path: "celebrer/messes", Component: Messes },
       { path: "celebrer/sacrements", Component: Sacrements },
+      { path: "celebrer/sacrements/:id", Component: SacrementDetail },
       { path: "celebrer/intention", Component: Intention },
       { path: "celebrer/bans", Component: Bans },
 
@@ -102,11 +129,47 @@ export const router = createBrowserRouter([
       { path: "homelies", Component: Homelies },
       { path: "mediatheque", Component: Mediatheque },
       { path: "contact", Component: Contact },
-      { path: "don", Component: Don },
+      {
+        path: "don",
+        Component: () => (
+          <RequireAuth>
+            <Don />
+          </RequireAuth>
+        ),
+      },
       { path: "boutique", Component: Boutique },
+      { path: "boutique/:id", Component: BoutiqueDetail },
       { path: "espace-paroissien", Component: EspaceMembre },
 
       { path: "*", Component: NotFound },
+    ],
+  },
+  { path: "admin/login", Component: AdminLogin },
+  {
+    path: "admin",
+    Component: () => (
+      <RequireAdmin>
+        <AdminLayout />
+      </RequireAdmin>
+    ),
+    children: [
+      { index: true, Component: AdminDashboard },
+      { path: "parametres", Component: AdminSettings },
+      { path: "horaires-messes", Component: AdminMassSchedule },
+      { path: "sacrements", Component: AdminSacrements },
+      { path: "catechese", Component: AdminCatechese },
+      { path: "priere", Component: AdminPriere },
+      { path: "intentions", Component: AdminIntentions },
+      { path: "homelies", Component: AdminHomelies },
+      { path: "mouvements", Component: AdminMouvements },
+      { path: "projets", Component: AdminProjets },
+      { path: "registre", Component: AdminRegistre },
+      { path: "produits", Component: AdminProduits },
+      { path: "commandes", Component: AdminCommandes },
+      { path: "dons", Component: AdminDonations },
+      { path: "journal/abonnements", Component: AdminJournalAbonnements },
+      { path: "journal/numeros", Component: AdminJournalNumeros },
+      { path: "journal/tarifs", Component: AdminJournalTarifs },
     ],
   },
 ]);

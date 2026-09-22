@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { apiPost, ApiError } from "@/lib/api";
 
 const GROUPES = [
   "Conseil pastoral",
@@ -34,13 +35,34 @@ export default function Registre() {
     membreCEV: "", quelleCEV: "", membreGroupe: "", quelGroupe: "", anciennete: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    try {
+      await apiPost("/registre", {
+        nom: form.nom,
+        prenom: form.prenom,
+        email: form.email || null,
+        telephone: form.telephone,
+        tranche_age: form.trancheAge,
+        rue: form.rue || null,
+        quartier: form.quartier,
+        lieu_dit: form.lieuDit || null,
+        membre_cev: form.membreCEV === "oui",
+        quelle_cev: form.quelleCEV || null,
+        membre_groupe: form.membreGroupe === "oui",
+        quel_groupe: form.quelGroupe || null,
+        anciennete: form.anciennete,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
   };
 
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all";
@@ -199,6 +221,11 @@ export default function Registre() {
                 </select>
               </div>
 
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem" }}>
+                  {error}
+                </div>
+              )}
               <button type="submit"
                 style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
                 className="w-full text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">

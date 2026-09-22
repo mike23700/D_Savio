@@ -1,7 +1,19 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { MASS_SCHEDULE } from "@/data/content";
+import { apiGet } from "@/lib/api";
+
+interface ScheduleGroup {
+  day: string;
+  times: { id: number; time: string | null; type: string; note: string | null }[];
+}
 
 export default function Messes() {
+  const [schedule, setSchedule] = useState<ScheduleGroup[]>([]);
+
+  useEffect(() => {
+    apiGet<ScheduleGroup[]>("/mass-schedule").then(setSchedule).catch(() => {});
+  }, []);
+
   return (
     <>
       <div className="relative h-64 md:h-72 flex items-end overflow-hidden">
@@ -50,7 +62,7 @@ export default function Messes() {
           <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "clamp(1.5rem, 3vw, 2rem)", fontWeight: 700, color: "#1c2340", marginBottom: 32 }}>Horaires des messes</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
-            {MASS_SCHEDULE.map((s) => (
+            {schedule.map((s) => (
               <div key={s.day} className="bg-white rounded-2xl p-6 border border-gray-100 hover:shadow-md hover:border-yellow-200 transition-all">
                 <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.1em" }} className="mb-3">{s.day.toUpperCase()}</div>
                 {s.times.map((t) => (

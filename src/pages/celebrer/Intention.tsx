@@ -1,13 +1,28 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { apiPost, ApiError } from "@/lib/api";
 
 export default function Intention() {
-  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", description: "", date: "", heure: "" });
+  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", description: "", date: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    try {
+      await apiPost("/intentions", {
+        nom: form.nom,
+        prenom: form.prenom,
+        email: form.email || null,
+        telephone: form.telephone,
+        description: form.description,
+        date_souhaitee: form.date || null,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
   };
 
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all";
@@ -82,23 +97,15 @@ export default function Intention() {
                   <label style={labelStyle} className="block mb-1.5">Description de l'intention *</label>
                   <textarea required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Ex: Pour le repos de l'âme de..., Pour la guérison de..., En action de grâce pour..." rows={4} className={inputClass} style={{ ...inputStyle, resize: "vertical" as const }} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label style={labelStyle} className="block mb-1.5">Date souhaitée</label>
-                    <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputClass} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle} className="block mb-1.5">Heure souhaitée</label>
-                    <select value={form.heure} onChange={e => setForm({ ...form, heure: e.target.value })} className={inputClass} style={inputStyle}>
-                      <option value="">Sélectionner...</option>
-                      <option value="06h30">06h30</option>
-                      <option value="07h00">07h00 (Dimanche)</option>
-                      <option value="09h00">09h00 (Dimanche)</option>
-                      <option value="11h00">11h00 (Dimanche)</option>
-                      <option value="18h30">18h30 (Dimanche)</option>
-                    </select>
-                  </div>
+                <div>
+                  <label style={labelStyle} className="block mb-1.5">Date souhaitée</label>
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputClass} style={inputStyle} />
                 </div>
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem" }}>
+                    {error}
+                  </div>
+                )}
                 <button type="submit"
                   style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
                   className="w-full text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">

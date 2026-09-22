@@ -1,21 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
 
-const NIVEAUX = [
-  { nom: "Éveil à la foi", age: "5-6 ans", icon: "🌱", desc: "Introduction douce à la foi chrétienne pour les tout-petits. Découverte de Dieu à travers des histoires, des chants et des activités adaptées.", duree: "1 an" },
-  { nom: "1ère Année", age: "7-8 ans", icon: "📖", desc: "Approfondissement de la foi, préparation à la première réconciliation et découverte des sacrements.", duree: "1 an" },
-  { nom: "2e Année", age: "9-10 ans", icon: "✝️", desc: "Préparation à la première communion. Découverte de l'Eucharistie et de sa place dans la vie chrétienne.", duree: "1 an" },
-  { nom: "3e Année", age: "11-12 ans", icon: "🕊️", desc: "Approfondissement de la vie chrétienne, préparation à la confirmation et engagement dans la communauté.", duree: "1 an" },
-  { nom: "Préparation au Mariage", age: "Adultes", icon: "💍", desc: "Parcours complet pour les couples souhaitant se marier à l'Église. Sessions collectives et entretiens personnels.", duree: "6 mois" },
-];
+interface Niveau {
+  id: number;
+  nom: string;
+  age_label: string;
+  icon: string;
+  description: string;
+  duree: string;
+}
 
 export default function Catechese() {
-  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", niveau: "", age: "" });
+  const [niveaux, setNiveaux] = useState<Niveau[]>([]);
+  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", niveau_id: "", age: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    apiGet<Niveau[]>("/catechese/niveaux").then(setNiveaux).catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    try {
+      await apiPost("/catechese/inscriptions", {
+        nom: form.nom,
+        prenom: form.prenom,
+        email: form.email || null,
+        telephone: form.telephone,
+        niveau_id: form.niveau_id || null,
+        age: form.age,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
   };
 
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all";
@@ -49,12 +70,12 @@ export default function Catechese() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
-            {NIVEAUX.map((niveau) => (
-              <div key={niveau.nom} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-yellow-200 hover:shadow-md transition-all">
+            {niveaux.map((niveau) => (
+              <div key={niveau.id} className="bg-white rounded-2xl p-6 border border-gray-100 hover:border-yellow-200 hover:shadow-md transition-all">
                 <span style={{ fontSize: "2rem", display: "block", marginBottom: 12 }}>{niveau.icon}</span>
-                <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.1em", marginBottom: 4 }}>{niveau.age.toUpperCase()}</div>
+                <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.1em", marginBottom: 4 }}>{niveau.age_label?.toUpperCase()}</div>
                 <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", fontWeight: 700, color: "#1c2340", marginBottom: 8 }}>{niveau.nom}</h3>
-                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.7, marginBottom: 12 }}>{niveau.desc}</p>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#6b7280", lineHeight: 1.7, marginBottom: 12 }}>{niveau.description}</p>
                 <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.72rem", fontWeight: 700, color: "#0B3D91", background: "#E8F2FF", padding: "2px 10px", borderRadius: 20 }}>
                   Durée : {niveau.duree}
                 </span>
@@ -107,11 +128,16 @@ export default function Catechese() {
                   </div>
                   <div>
                     <label style={labelStyle} className="block mb-1.5">Niveau souhaité *</label>
-                    <select required value={form.niveau} onChange={e => setForm({ ...form, niveau: e.target.value })} className={inputClass} style={inputStyle}>
+                    <select required value={form.niveau_id} onChange={e => setForm({ ...form, niveau_id: e.target.value })} className={inputClass} style={inputStyle}>
                       <option value="">Sélectionner un niveau...</option>
-                      {NIVEAUX.map(n => <option key={n.nom} value={n.nom}>{n.nom} ({n.age})</option>)}
+                      {niveaux.map(n => <option key={n.id} value={n.id}>{n.nom} ({n.age_label})</option>)}
                     </select>
                   </div>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem" }}>
+                      {error}
+                    </div>
+                  )}
                   <button type="submit"
                     style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
                     className="w-full text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">

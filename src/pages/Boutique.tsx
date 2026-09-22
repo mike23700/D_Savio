@@ -1,18 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { BOUTIQUE_PRODUCTS } from "@/data/content";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+
+interface Product {
+  id: number;
+  nom: string;
+  slug: string;
+  prix: number;
+  prix_barre: number | null;
+  category: string;
+  img: string;
+  description: string;
+}
 
 type CartItem = { id: number; qty: number };
 
 const CATEGORIES = ["Tous", "Livres", "Accessoires"];
 
+interface OrderResult {
+  order: { order_number: string; total: number };
+  payment: { instructions: string };
+}
+
 export default function Boutique() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState("Tous");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<typeof BOUTIQUE_PRODUCTS[0] | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({ nom: "", prenom: "", email: "", telephone: "", payment_method: "orange_money" });
+  const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = BOUTIQUE_PRODUCTS.filter(p => filter === "Tous" || p.category === filter);
+  useEffect(() => {
+    apiGet<Product[]>("/products").then(setProducts).catch(() => {});
+  }, []);
+
+  const filtered = products.filter(p => filter === "Tous" || p.category === filter);
 
   const addToCart = (id: number) => {
     setCart(prev => {
@@ -29,15 +53,25 @@ export default function Boutique() {
     setCart(prev => prev.map(c => c.id === id ? { ...c, qty } : c));
   };
 
-  const cartItems = cart.map(c => ({ ...c, product: BOUTIQUE_PRODUCTS.find(p => p.id === c.id)! })).filter(c => c.product);
+  const cartItems = cart.map(c => ({ ...c, product: products.find(p => p.id === c.id)! })).filter(c => c.product);
   const cartTotal = cartItems.reduce((sum, c) => sum + c.product.prix * c.qty, 0);
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
-  const whatsappMessage = () => {
-    const lines = cartItems.map(c => `• ${c.product.nom} x${c.qty} = ${(c.product.prix * c.qty).toLocaleString("fr-FR")} FCFA`).join("\n");
-    const msg = `Bonjour, je souhaite commander depuis la boutique paroissiale:\n\n${lines}\n\nTotal: ${cartTotal.toLocaleString("fr-FR")} FCFA`;
-    return `https://wa.me/237655529999?text=${encodeURIComponent(msg)}`;
-  };
+  async function submitOrder(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const result = await apiPost<OrderResult>("/orders", {
+        ...checkoutForm,
+        email: checkoutForm.email || null,
+        items: cartItems.map(c => ({ product_id: c.id, qty: c.qty })),
+      });
+      setOrderResult(result);
+      setCart([]);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
+  }
 
   return (
     <>
@@ -81,29 +115,38 @@ export default function Boutique() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((product) => (
               <div key={product.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:border-yellow-200 transition-all group">
-                <div className="relative h-48 overflow-hidden cursor-pointer" onClick={() => setSelectedProduct(product)}>
+                <Link to={`/boutique/${product.slug}`} className="relative h-48 overflow-hidden block">
                   <img src={product.img} alt={product.nom} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <span style={{ position: "absolute", top: 12, left: 12, background: product.category === "Livres" ? "#0B3D91" : "#D4AF37", borderRadius: 20, padding: "3px 10px", fontFamily: "Montserrat, sans-serif", fontSize: "0.65rem", fontWeight: 700, color: "white" }}>
                     {product.category}
                   </span>
-                </div>
+                </Link>
                 <div className="p-5">
-                  <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.95rem", fontWeight: 700, color: "#1c2340", lineHeight: 1.3, marginBottom: 8 }}>{product.nom}</h3>
+                  <Link to={`/boutique/${product.slug}`}>
+                    <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.95rem", fontWeight: 700, color: "#1c2340", lineHeight: 1.3, marginBottom: 8 }}>{product.nom}</h3>
+                  </Link>
                   <div className="flex items-center gap-2 mb-4">
                     <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "1rem", fontWeight: 700, color: "#0B3D91" }}>
                       {product.prix.toLocaleString("fr-FR")} FCFA
                     </span>
-                    {"prixBarre" in product && product.prixBarre && (
+                    {product.prix_barre && (
                       <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", color: "#9ca3af", textDecoration: "line-through" }}>
-                        {product.prixBarre.toLocaleString("fr-FR")} FCFA
+                        {product.prix_barre.toLocaleString("fr-FR")} FCFA
                       </span>
                     )}
                   </div>
-                  <button onClick={() => addToCart(product.id)}
-                    style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.78rem" }}
-                    className="w-full text-white py-2.5 rounded-xl hover:opacity-90 transition-opacity">
-                    🛒 Ajouter au panier
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => addToCart(product.id)}
+                      style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.78rem" }}
+                      className="flex-1 text-white py-2.5 rounded-xl hover:opacity-90 transition-opacity">
+                      🛒 Ajouter
+                    </button>
+                    <Link to={`/boutique/${product.slug}`}
+                      style={{ border: "2px solid #0B3D91", color: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.78rem" }}
+                      className="px-4 py-2.5 rounded-xl hover:bg-blue-50 transition-colors flex items-center">
+                      Détail
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -151,43 +194,67 @@ export default function Boutique() {
                   <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", fontWeight: 600, color: "#374151" }}>Total</span>
                   <span style={{ fontFamily: "Playfair Display, serif", fontSize: "1.1rem", fontWeight: 700, color: "#0B3D91" }}>{cartTotal.toLocaleString("fr-FR")} FCFA</span>
                 </div>
-                <a href={whatsappMessage()} target="_blank" rel="noreferrer"
-                  style={{ background: "#25D366", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
-                  className="block text-center text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">
-                  💬 Commander via WhatsApp
-                </a>
+                <button onClick={() => { setCartOpen(false); setCheckoutOpen(true); }}
+                  style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
+                  className="block w-full text-center text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">
+                  Passer commande →
+                </button>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Product modal */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setSelectedProduct(null)}>
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="relative h-52 overflow-hidden rounded-t-2xl">
-              <img src={selectedProduct.img} alt={selectedProduct.nom} className="w-full h-full object-cover" />
-              <button onClick={() => setSelectedProduct(null)} className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full w-8 h-8 flex items-center justify-center">✕</button>
-            </div>
-            <div className="p-6">
-              <span style={{ background: selectedProduct.category === "Livres" ? "#E8F2FF" : "#FDF8E7", color: selectedProduct.category === "Livres" ? "#0B3D91" : "#D4AF37", fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {selectedProduct.category}
-              </span>
-              <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.2rem", fontWeight: 700, color: "#1c2340", marginTop: 12, marginBottom: 8 }}>{selectedProduct.nom}</h2>
-              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#4b5563", lineHeight: 1.8, marginBottom: 16 }}>{selectedProduct.desc}</p>
-              <div className="flex items-center gap-3 mb-20">
-                <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "1.2rem", fontWeight: 700, color: "#0B3D91" }}>{selectedProduct.prix.toLocaleString("fr-FR")} FCFA</span>
-                {"prixBarre" in selectedProduct && selectedProduct.prixBarre && (
-                  <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#9ca3af", textDecoration: "line-through" }}>{selectedProduct.prixBarre.toLocaleString("fr-FR")} FCFA</span>
-                )}
+      {/* Checkout modal */}
+      {checkoutOpen && !orderResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setCheckoutOpen(false)}>
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.2rem", fontWeight: 700, color: "#1c2340", marginBottom: 16 }}>Finaliser la commande</h2>
+            <form onSubmit={submitOrder} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <input required placeholder="Nom" value={checkoutForm.nom} onChange={e => setCheckoutForm({ ...checkoutForm, nom: e.target.value })} className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                <input required placeholder="Prénom" value={checkoutForm.prenom} onChange={e => setCheckoutForm({ ...checkoutForm, prenom: e.target.value })} className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
               </div>
-              <button onClick={() => { addToCart(selectedProduct.id); setSelectedProduct(null); }}
-                style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
-                className="w-full text-white py-3 rounded-xl hover:opacity-90 transition-opacity">
-                🛒 Ajouter au panier
+              <input required placeholder="Téléphone" value={checkoutForm.telephone} onChange={e => setCheckoutForm({ ...checkoutForm, telephone: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+              <input type="email" placeholder="Email (optionnel)" value={checkoutForm.email} onChange={e => setCheckoutForm({ ...checkoutForm, email: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+              <div>
+                <label style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", fontWeight: 600, color: "#374151" }} className="block mb-1.5">Mode de paiement</label>
+                <select value={checkoutForm.payment_method} onChange={e => setCheckoutForm({ ...checkoutForm, payment_method: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                  <option value="orange_money">Orange Money</option>
+                  <option value="mtn_momo">MTN MoMo</option>
+                  <option value="especes">Espèces (au secrétariat)</option>
+                </select>
+              </div>
+              {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>}
+              <div className="flex justify-between items-center pt-2">
+                <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.85rem", color: "#6b7280" }}>Total</span>
+                <span style={{ fontFamily: "Playfair Display, serif", fontSize: "1.1rem", fontWeight: 700, color: "#0B3D91" }}>{cartTotal.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              <button type="submit" style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }} className="w-full text-white py-3 rounded-xl hover:opacity-90 transition-opacity">
+                Confirmer la commande
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Order confirmation */}
+      {orderResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center">
+            <div className="text-5xl mb-4">✅</div>
+            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.3rem", fontWeight: 700, color: "#1c2340" }}>Commande {orderResult.order.order_number}</h2>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.85rem", color: "#6b7280", marginTop: 8 }}>
+              Total : <strong>{orderResult.order.total.toLocaleString("fr-FR")} FCFA</strong>
+            </p>
+            <div className="bg-blue-50 rounded-xl p-4 mt-5 text-left">
+              <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.83rem", color: "#374151", lineHeight: 1.7 }}>{orderResult.payment.instructions}</p>
             </div>
+            <button onClick={() => { setOrderResult(null); setCheckoutOpen(false); }}
+              style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.83rem" }}
+              className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-full mt-6 hover:opacity-90 transition-opacity">
+              Fermer
+            </button>
           </div>
         </div>
       )}

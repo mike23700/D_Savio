@@ -1,4 +1,5 @@
 node_modules/
+composer.phar
 dist/
 build/
 .cache/

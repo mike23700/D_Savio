@@ -1,18 +1,40 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { apiPost, ApiError } from "@/lib/api";
+
+const MODE_TO_METHOD: Record<string, string> = { orange: "orange_money", mtn: "mtn_momo", especes: "especes" };
+
+interface DonationResult {
+  donation: { montant: number };
+  payment: { instructions: string };
+}
 
 export default function Don() {
   const [montant, setMontant] = useState("");
   const [montantCustom, setMontantCustom] = useState("");
   const [mode, setMode] = useState("orange");
-  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", intention: "" });
+  const [intention, setIntention] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [result, setResult] = useState<DonationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const MONTANTS = ["2 000", "5 000", "10 000", "25 000", "50 000"];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    const amount = parseInt((montantCustom || montant).replace(/\s/g, ""), 10);
+    try {
+      const res = await apiPost<DonationResult>("/donations", {
+        montant: amount,
+        payment_method: MODE_TO_METHOD[mode],
+        intention: intention || null,
+      });
+      setResult(res);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
   };
 
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all";
@@ -77,14 +99,17 @@ export default function Don() {
 
           {/* Form */}
           <div className="lg:col-span-3">
-            {submitted ? (
+            {submitted && result ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-5">🙏</div>
                 <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.5rem", fontWeight: 700, color: "#1c2340" }}>Merci pour votre générosité !</h3>
-                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.9rem", color: "#6b7280", marginTop: 10, lineHeight: 1.7, maxWidth: 400, margin: "10px auto 0" }}>
-                  Votre don a bien été enregistré. Un reçu vous sera envoyé par email. Que Dieu vous bénisse !
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.9rem", color: "#6b7280", marginTop: 10, lineHeight: 1.7, maxWidth: 420, margin: "10px auto 0" }}>
+                  Votre don de <strong>{result.donation.montant.toLocaleString("fr-FR")} FCFA</strong> a bien été enregistré.
                 </p>
-                <button onClick={() => setSubmitted(false)}
+                <div className="bg-blue-50 rounded-xl p-4 mt-5 text-left max-w-md mx-auto">
+                  <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.83rem", color: "#374151", lineHeight: 1.7 }}>{result.payment.instructions}</p>
+                </div>
+                <button onClick={() => { setSubmitted(false); setResult(null); }}
                   style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
                   className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-full mt-6 hover:opacity-90">
                   Faire un autre don
@@ -154,30 +179,15 @@ export default function Don() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Nom(s) *</label>
-                      <input required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} placeholder="Votre nom" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Prénom(s)</label>
-                      <input value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} placeholder="Votre prénom" className={inputClass} style={inputStyle} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Email</label>
-                      <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="votre@email.com" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Téléphone *</label>
-                      <input required value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} placeholder="(+237) 6XX XXX XXX" className={inputClass} style={inputStyle} />
-                    </div>
-                  </div>
                   <div>
                     <label style={labelStyle} className="block mb-1.5">Intention particulière (optionnel)</label>
-                    <input value={form.intention} onChange={e => setForm({ ...form, intention: e.target.value })} placeholder="Ex : pour les travaux, pour la Caritas..." className={inputClass} style={inputStyle} />
+                    <input value={intention} onChange={e => setIntention(e.target.value)} placeholder="Ex : pour les travaux, pour la Caritas..." className={inputClass} style={inputStyle} />
                   </div>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem" }}>
+                      {error}
+                    </div>
+                  )}
                   <button type="submit"
                     style={{ background: "#D4AF37", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.9rem" }}
                     className="w-full text-white py-4 rounded-xl hover:opacity-90 transition-opacity">

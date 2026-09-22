@@ -1,6 +1,27 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { NEWS } from "@/data/content";
+import { apiGet } from "@/lib/api";
+
+interface NextMass {
+  date: string;
+  time: string;
+  type: string;
+  note: string | null;
+  day_label: string;
+}
+
+interface TodayItem {
+  time: string;
+  type: string;
+}
+
+interface LatestHomelie {
+  title: string;
+  sunday: string;
+  readings: string;
+  published_at: string;
+}
 
 const IconArrow = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 inline ml-1">
@@ -120,13 +141,6 @@ const SERVICES = [
   { Icon: SvgHome, label: "Espace paroissial", sub: "Mon espace personnel", to: "/espace-paroissien" },
 ];
 
-const TODAY_AGENDA = [
-  { time: "06h30", label: "Messe quotidienne" },
-  { time: "07h15", label: "Adoration" },
-  { time: "17h00", label: "Confessions" },
-  { time: "18h30", label: "Messe du soir" },
-];
-
 // ─── Slideshow ────────────────────────────────────────────────────────────────
 
 function HeroSlideshow() {
@@ -212,6 +226,19 @@ function HeroSlideshow() {
 
 export default function Home() {
   const [hoveredService, setHoveredService] = useState<string | null>(null);
+  const [nextMass, setNextMass] = useState<NextMass | null>(null);
+  const [todayItems, setTodayItems] = useState<TodayItem[]>([]);
+  const [latestHomelie, setLatestHomelie] = useState<LatestHomelie | null>(null);
+
+  useEffect(() => {
+    apiGet<NextMass | null>("/mass-schedule/next").then(setNextMass).catch(() => {});
+    apiGet<TodayItem[]>("/mass-schedule/today").then(setTodayItems).catch(() => {});
+    apiGet<LatestHomelie | null>("/homelies/latest").then(setLatestHomelie).catch(() => {});
+  }, []);
+
+  const nextMassLabel = nextMass
+    ? `${nextMass.date === new Date().toISOString().slice(0, 10) ? "Aujourd'hui" : nextMass.day_label} – ${nextMass.time}`
+    : null;
 
   return (
     <>
@@ -228,13 +255,10 @@ export default function Home() {
                 <span className="text-lg">⛪</span>
                 <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.12em" }}>PROCHAINE MESSE</span>
               </div>
-              <div style={{ fontFamily: "Playfair Display, serif", fontSize: "1.25rem", fontWeight: 700, color: "#0B3D91" }}>Aujourd'hui – 18h30</div>
-              <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#4b5563", marginTop: 4 }}>Messe du soir · Église principale</div>
+              <div style={{ fontFamily: "Playfair Display, serif", fontSize: "1.25rem", fontWeight: 700, color: "#0B3D91" }}>{nextMassLabel || "—"}</div>
+              <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#4b5563", marginTop: 4 }}>{nextMass?.type} {nextMass?.note ? `· ${nextMass.note}` : ""}</div>
               <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.75rem", color: "#9ca3af", marginTop: 6, lineHeight: 1.5 }}>
                 📍 New-Bell Bonadoumbé, Douala
-              </div>
-              <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.75rem", color: "#9ca3af", marginTop: 4 }}>
-                Messe suivante : Demain 06h30
               </div>
               <div className="mt-auto pt-4">
                 <Link to="/celebrer/messes" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.76rem", color: "#0B3D91", fontWeight: 600 }}
@@ -248,12 +272,12 @@ export default function Home() {
                 <span className="text-lg">📖</span>
                 <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.12em" }}>LECTURES DU JOUR</span>
               </div>
-              <div style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", fontWeight: 600, color: "#1c2340", lineHeight: 1.3 }}>Jeudi 18 septembre 2026</div>
-              <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#4b5563", marginTop: 4 }}>27e semaine du Temps Ordinaire</div>
+              <div style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", fontWeight: 600, color: "#1c2340", lineHeight: 1.3 }}>
+                {latestHomelie ? new Date(latestHomelie.published_at).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "—"}
+              </div>
+              <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.8rem", color: "#4b5563", marginTop: 4 }}>{latestHomelie?.sunday}</div>
               <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.75rem", color: "#9ca3af", marginTop: 6, lineHeight: 1.6 }}>
-                1ère lecture : Lc 7, 11-17<br />
-                Psaume 146<br />
-                Évangile : Lc 7, 11-17
+                {latestHomelie?.readings}
               </div>
               <div className="mt-auto pt-4">
                 <Link to="/celebrer" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.76rem", color: "#0B3D91", fontWeight: 600 }}
@@ -268,10 +292,10 @@ export default function Home() {
                 <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.12em" }}>AUJOURD'HUI</span>
               </div>
               <div className="space-y-2 flex-1">
-                {TODAY_AGENDA.map(({ time, label }) => (
-                  <div key={time} className="flex items-center gap-3">
+                {todayItems.slice(0, 4).map(({ time, type }, i) => (
+                  <div key={`${time}-${i}`} className="flex items-center gap-3">
                     <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", fontWeight: 700, color: "#0B3D91", minWidth: 44 }}>{time}</span>
-                    <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", color: "#4b5563" }}>{label}</span>
+                    <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", color: "#4b5563" }}>{type}</span>
                   </div>
                 ))}
               </div>

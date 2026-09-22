@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { PARISH } from "@/data/content";
 import logoImg from "@/imports/logo.png";
+import { useSettings } from "@/lib/settings";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -78,18 +79,20 @@ const NAV = [
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 function TopBar() {
+  const settings = useSettings();
+  const whatsapp = settings["parish.whatsapp_number"] || "237655529999";
   return (
     <div className="hidden sm:block" style={{ background: "#0B3D91" }}>
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
         <span style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.72rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.04em" }}>
-          {PARISH.tagline}
+          {settings["parish.tagline"] || PARISH.tagline}
         </span>
         <div className="flex items-center gap-4">
           {[
-            { icon: "💬", label: "WhatsApp", href: `https://wa.me/237655529999` },
-            { icon: "📘", label: "Facebook", href: "#" },
-            { icon: "▶️", label: "YouTube", href: "#" },
-            { icon: "📷", label: "Instagram", href: "#" },
+            { icon: "💬", label: "WhatsApp", href: `https://wa.me/${whatsapp}` },
+            { icon: "📘", label: "Facebook", href: settings["social.facebook_url"] || "#" },
+            { icon: "▶️", label: "YouTube", href: settings["social.youtube_url"] || "#" },
+            { icon: "📷", label: "Instagram", href: settings["social.instagram_url"] || "#" },
           ].map(({ icon, label, href }) => (
             <a key={label} href={href} target="_blank" rel="noreferrer"
               style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.72rem", color: "rgba(255,255,255,0.85)" }}
@@ -236,6 +239,8 @@ function Header() {
 // ─── Footer ──────────────────────────────────────────────────────────────────
 
 function Footer() {
+  const settings = useSettings();
+  const whatsapp = settings["parish.whatsapp_number"] || "237655529999";
   return (
     <footer style={{ background: "#0B3D91" }} className="text-white pt-14 pb-6 px-4">
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10 border-b border-white/10">
@@ -244,10 +249,15 @@ function Footer() {
             <img src={logoImg} alt="Paroisse Saint Dominique Savio" style={{ height: 44, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} />
           </div>
           <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.78rem", color: "rgba(255,255,255,0.65)", lineHeight: 1.8 }}>
-            Fondée le {PARISH.founded}, notre paroisse est un lieu de rencontre, de prière et de fraternité au cœur de Douala.
+            Fondée le {settings["parish.founded"] || PARISH.founded}, notre paroisse est un lieu de rencontre, de prière et de fraternité au cœur de Douala.
           </p>
           <div className="flex items-center gap-2 mt-5">
-            {[["💬", `https://wa.me/237655529999`], ["📘", "#"], ["▶️", "#"], ["📷", "#"]].map(([icon, href], i) => (
+            {[
+              ["💬", `https://wa.me/${whatsapp}`],
+              ["📘", settings["social.facebook_url"] || "#"],
+              ["▶️", settings["social.youtube_url"] || "#"],
+              ["📷", settings["social.instagram_url"] || "#"],
+            ].map(([icon, href], i) => (
               <a key={i} href={href} target="_blank" rel="noreferrer"
                 style={{ width: 34, height: 34, background: "rgba(255,255,255,0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.9rem" }}
                 className="hover:bg-yellow-400 transition-colors">

@@ -1,14 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { JOURNAL_TARIFS } from "@/data/content";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+
+interface Tarif {
+  id: number;
+  label: string;
+  price_label: string;
+  issues: number;
+  period: string;
+}
 
 export default function Journal() {
-  const [form, setForm] = useState({ nom: "", prenom: "", email: "", telephone: "", format: "", periode: "" });
+  const { user } = useAuth();
+  const [tarifs, setTarifs] = useState<Tarif[]>([]);
+  const [tarifId, setTarifId] = useState("");
+  const [format, setFormat] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    apiGet<Tarif[]>("/journal/tarifs").then(setTarifs).catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    try {
+      await apiPost("/journal/subscribe", { tarif_id: tarifId, format });
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+    }
   };
 
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all";
@@ -59,13 +82,13 @@ export default function Journal() {
             <div>
               <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.68rem", fontWeight: 700, color: "#D4AF37", letterSpacing: "0.15em" }} className="mb-4">TARIFS D'ABONNEMENT</div>
               <div className="space-y-3">
-                {JOURNAL_TARIFS.map((tarif, i) => (
-                  <div key={tarif.label} className={`rounded-xl p-5 border ${i === 3 ? "border-yellow-400 bg-yellow-50" : "border-gray-100 bg-white"} flex items-center justify-between`}>
+                {tarifs.map((tarif, i) => (
+                  <div key={tarif.id} className={`rounded-xl p-5 border ${i === tarifs.length - 1 ? "border-yellow-400 bg-yellow-50" : "border-gray-100 bg-white"} flex items-center justify-between`}>
                     <div>
                       <div style={{ fontFamily: "Playfair Display, serif", fontWeight: 700, color: "#1c2340", fontSize: "1rem" }}>{tarif.label}</div>
                       <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.75rem", color: "#6b7280", marginTop: 2 }}>{tarif.issues} numéros · {tarif.period}</div>
                     </div>
-                    <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "1rem", fontWeight: 700, color: i === 3 ? "#D4AF37" : "#0B3D91" }}>{tarif.price}</div>
+                    <div style={{ fontFamily: "Montserrat, sans-serif", fontSize: "1rem", fontWeight: 700, color: i === tarifs.length - 1 ? "#D4AF37" : "#0B3D91" }}>{tarif.price_label}</div>
                   </div>
                 ))}
               </div>
@@ -80,55 +103,55 @@ export default function Journal() {
           {/* Formulaire */}
           <div className="max-w-xl mx-auto">
             <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.3rem", fontWeight: 700, color: "#1c2340", marginBottom: 24 }}>S'abonner au journal</h3>
-            {submitted ? (
+            {!user ? (
+              <div className="text-center py-10 bg-blue-50 rounded-2xl border border-blue-100">
+                <div className="text-5xl mb-4">🔒</div>
+                <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.1rem", fontWeight: 700, color: "#1c2340" }}>Connexion requise</h3>
+                <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#6b7280", marginTop: 8 }}>
+                  Connectez-vous ou créez un compte pour vous abonner au journal paroissial.
+                </p>
+                <Link to="/espace-paroissien"
+                  style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.83rem" }}
+                  className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-full mt-6 hover:opacity-90 transition-opacity">
+                  Se connecter →
+                </Link>
+              </div>
+            ) : submitted ? (
               <div className="text-center py-10 bg-green-50 rounded-2xl border border-green-100">
                 <div className="text-5xl mb-4">📰</div>
                 <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.2rem", fontWeight: 700, color: "#1c2340" }}>Abonnement enregistré !</h3>
                 <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#6b7280", marginTop: 8 }}>
-                  Votre abonnement au journal a été pris en compte. Nous vous contacterons pour les modalités de paiement.
+                  Retrouvez votre abonnement dans votre espace membre, onglet « Journal paroissial ».
                 </p>
-                <button onClick={() => setSubmitted(false)}
+                <Link to="/espace-paroissien"
                   style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.83rem" }}
                   className="inline-flex items-center gap-2 text-white px-6 py-3 rounded-full mt-6 hover:opacity-90 transition-opacity">
-                  Nouvel abonnement
-                </button>
+                  Voir mon espace membre →
+                </Link>
               </div>
             ) : (
               <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Nom *</label>
-                      <input required value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} placeholder="Nom" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Prénom(s) *</label>
-                      <input required value={form.prenom} onChange={e => setForm({ ...form, prenom: e.target.value })} placeholder="Prénom" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Email *</label>
-                      <input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="votre@email.com" className={inputClass} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Téléphone *</label>
-                      <input required value={form.telephone} onChange={e => setForm({ ...form, telephone: e.target.value })} placeholder="(+237) 6XX XXX XXX" className={inputClass} style={inputStyle} />
-                    </div>
+                  <div>
+                    <label style={labelStyle} className="block mb-1.5">Formule *</label>
+                    <select required value={tarifId} onChange={e => setTarifId(e.target.value)} className={inputClass} style={inputStyle}>
+                      <option value="">Sélectionner...</option>
+                      {tarifs.map(t => <option key={t.id} value={t.id}>{t.label} – {t.price_label}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label style={labelStyle} className="block mb-1.5">Format *</label>
-                    <select required value={form.format} onChange={e => setForm({ ...form, format: e.target.value })} className={inputClass} style={inputStyle}>
+                    <select required value={format} onChange={e => setFormat(e.target.value)} className={inputClass} style={inputStyle}>
                       <option value="">Sélectionner...</option>
                       <option value="electronique">Électronique (PDF par email)</option>
                       <option value="papier">Papier (récupérer à la paroisse)</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={labelStyle} className="block mb-1.5">Période d'abonnement *</label>
-                    <select required value={form.periode} onChange={e => setForm({ ...form, periode: e.target.value })} className={inputClass} style={inputStyle}>
-                      <option value="">Sélectionner...</option>
-                      {JOURNAL_TARIFS.map(t => <option key={t.label} value={t.label}>{t.label} – {t.price}</option>)}
-                    </select>
-                  </div>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3" style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.82rem" }}>
+                      {error}
+                    </div>
+                  )}
                   <button type="submit"
                     style={{ background: "#0B3D91", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.85rem" }}
                     className="w-full text-white py-3.5 rounded-xl hover:opacity-90 transition-opacity">

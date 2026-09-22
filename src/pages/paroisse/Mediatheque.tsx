@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { useSettings } from "@/lib/settings";
 
 const GALLERY_IMGS = [
   { src: "https://images.unsplash.com/photo-1515657241610-a6b33f0f6c5a?w=600&h=400&fit=crop&auto=format", alt: "Communauté en prière", cat: "Célébrations" },
@@ -15,6 +16,8 @@ const GALLERY_IMGS = [
 const CATS = ["Tous", "Célébrations", "Communauté", "Église", "Catéchèse", "Formation"];
 
 export default function ParoisseMediatheque() {
+  const settings = useSettings();
+  const youtubeUrl = settings["social.youtube_url"] || "#";
   const [tab, setTab] = useState<"galerie" | "videos">("galerie");
   const [filter, setFilter] = useState("Tous");
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -86,15 +89,22 @@ export default function ParoisseMediatheque() {
 
       {tab === "videos" && (
         <section className="py-12 px-4 bg-white">
-          <div className="max-w-5xl mx-auto text-center py-20">
-            <div className="text-6xl mb-5">▶️</div>
-            <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.4rem", fontWeight: 700, color: "#1c2340" }}>Chaîne YouTube</h3>
-            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#6b7280", marginTop: 8, lineHeight: 1.7, maxWidth: 450, margin: "8px auto 0" }}>
+          <div className="max-w-3xl mx-auto text-center py-16">
+            <a href={youtubeUrl} target="_blank" rel="noreferrer" className="block rounded-2xl overflow-hidden relative group">
+              <img src="https://images.unsplash.com/photo-1573591013318-b942d6ea1092?w=1000&h=560&fit=crop&auto=format" alt="Chaîne YouTube de la paroisse" className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(8,45,107,0.55)" }}>
+                <div style={{ width: 64, height: 64, background: "#ff0000", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: "1.6rem", color: "white", marginLeft: 4 }}>▶</span>
+                </div>
+                <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "1.2rem", fontWeight: 700, color: "white", marginTop: 12 }}>Chaîne YouTube de la paroisse</h3>
+              </div>
+            </a>
+            <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: "0.88rem", color: "#6b7280", marginTop: 16, lineHeight: 1.7 }}>
               Retrouvez nos messes en direct, nos homélies et les temps forts de la paroisse sur notre chaîne YouTube.
             </p>
-            <a href="#" target="_blank" rel="noreferrer"
+            <a href={youtubeUrl} target="_blank" rel="noreferrer"
               style={{ background: "#ff0000", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: "0.88rem" }}
-              className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full mt-8 hover:opacity-90 transition-opacity">
+              className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full mt-6 hover:opacity-90 transition-opacity">
               ▶️ Voir la chaîne YouTube
             </a>
           </div>
